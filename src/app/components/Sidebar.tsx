@@ -54,10 +54,16 @@ const Sidebar = () => {
     // console.log(roomId);
   };
 
+  const addNewRoom = async () => {
+    const roomName = prompt('ルーム名を入力してください');
+  };
   return (
     <div className="bg-custom-black h-full overflow-y-auto px-5 flex flex-col">
       <div className="flex-grow">
-        <div className="cursor-pointer flex justify-evenly items-center border mt-2 rounded-xl hover:bg-stone-700 duration-150 ">
+        <div
+          onClick={addNewRoom}
+          className="cursor-pointer flex justify-evenly items-center border mt-2 rounded-xl hover:bg-stone-700 duration-150 "
+        >
           <span className="text-slate-100 p-4 text-2xl">＋</span>
           <h1 className="text-slate-100 text-lg font-semibold p-4">New Chat</h1>
         </div>
