@@ -7,6 +7,8 @@ import {
   Timestamp,
   addDoc,
   collection,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -60,17 +62,28 @@ const Sidebar = () => {
     // console.log(roomId);
   };
 
-  const addNewRoom = async () => {
+
+  async function addNewRoom() {
     const roomName = prompt('ルーム名を入力してください');
-    if (roomName) {
-      const newRoomRef = collection(db, 'rooms');
-      await addDoc(newRoomRef, {
-        name: roomName,
-        userid: userId,
-        createdAt: serverTimestamp(),
-      });
+    if (!roomName) return;
+    const ref = collection(db, 'rooms');
+    const sameNameQuery = query(
+      ref,
+      where('userid', '==', userId),
+      where('name', '==', roomName),
+      limit(1)
+    );
+    const snap = await getDocs(sameNameQuery);
+    if (!snap.empty) {
+      alert('このルーム名は既に使用されています。');
+      return;
     }
-  };
+    await addDoc(ref, {
+      name: roomName,
+      userid: userId,
+      createdAt: serverTimestamp()
+    });
+  }
 
   const handleLogout = () => {
     auth.signOut();

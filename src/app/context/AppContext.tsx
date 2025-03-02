@@ -1,6 +1,6 @@
 'use client';
 
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import {
   useState,
   useEffect,
@@ -12,9 +12,9 @@ import { auth } from '../firebase';
 import { useRouter } from 'next/navigation';
 
 interface AppContextType {
-  user: User | null;
+  user: any | null; // ここにuserの型を詳細に指定できます。
   userId: string | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setUser: React.Dispatch<React.SetStateAction<any | null>>;
   selectedRoom: string | null;
   setSelectedRoom: React.Dispatch<React.SetStateAction<string | null>>;
   selectedRoomName: string | null;
@@ -22,7 +22,7 @@ interface AppContextType {
 }
 
 interface AppProviderProps {
-  children: ReactNode;
+  children: ReactNode; // children の型を ReactNode に指定
 }
 
 const defaultContextData: AppContextType = {
@@ -38,14 +38,14 @@ const defaultContextData: AppContextType = {
 const AppContext = createContext<AppContextType>(defaultContextData);
 
 export function AppProvider({ children }: AppProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null); // userの型をより詳細に指定できます。
   const [userId, setUserId] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedRoomName, setSelectedRoomName] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (newUser: User | null) => {
+    const unsubscribe = onAuthStateChanged(auth, (newUser) => {
       setUser(newUser);
       setUserId(newUser ? newUser.uid : null);
       if (!newUser) {
@@ -56,7 +56,7 @@ export function AppProvider({ children }: AppProviderProps) {
     return () => {
       unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   return (
     <AppContext.Provider

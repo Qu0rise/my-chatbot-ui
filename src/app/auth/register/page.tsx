@@ -23,9 +23,10 @@ const Register = () => {
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     await createUserWithEmailAndPassword(auth, data.email, data.password)
-      .then(() => {
-        // userCredential.user;
+      .then((userCredential) => {
+        const user = userCredential.user;
         router.push('/auth/login');
+        // console.log(user);
       })
       .catch((error) => {
         if (error.code === 'auth/email-already-in-use') {

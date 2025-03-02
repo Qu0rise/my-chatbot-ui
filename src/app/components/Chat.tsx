@@ -16,7 +16,6 @@ import { db } from '../firebase';
 import { useAppContext } from '../context/AppContext';
 import OpenAI from 'openai';
 import LoadingIcons from 'react-loading-icons';
-// import { useRouter } from 'next/navigation';
 
 type Message = {
   text: string;
@@ -37,14 +36,16 @@ const Chat = () => {
 
   const { selectedRoom, selectedRoomName } = useAppContext();
 
-  // const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  // ストリーミング中に画面へ逐次表示するためのパーシャル応答
+  const [partialBotResponse, setPartialBotResponse] = useState<string>('');
+
   const scrollDiv = useRef<HTMLDivElement>(null);
 
-  //各琉0無におけるメッセージを取得
+  // ルームが変更されたときにメッセージを取得
   useEffect(() => {
     if (selectedRoom) {
       const fetchMessages = async () => {
@@ -56,7 +57,6 @@ const Chat = () => {
         const unsubscribe = onSnapshot(q, (snapshot) => {
           const newMessages = snapshot.docs.map((doc) => doc.data() as Message);
           setMessages(newMessages);
-          console.log(messages);
         });
 
         return () => {
@@ -66,8 +66,9 @@ const Chat = () => {
 
       fetchMessages();
     }
-  }, [selectedRoom, messages]);
+  }, [selectedRoom]);
 
+  // メッセージ追加時に自動スクロール
   useEffect(() => {
     if (scrollDiv.current) {
       const element = scrollDiv.current;
@@ -78,50 +79,55 @@ const Chat = () => {
     }
   }, [messages]);
 
+  // ◆ ストリーム付きでメッセージを送信
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
 
+    const roomDocRef = doc(db, 'rooms', selectedRoom!);
+    const messagesCollectionRef = collection(roomDocRef, 'messages');
+
+    // 1) Firestoreにユーザー送信文を保存
     const messageData = {
       text: inputMessage,
       sender: 'user',
       createdAt: serverTimestamp(),
     };
-
-    const roomDocRef = doc(db, 'rooms', selectedRoom!);
-    const messagesCollectionRef = collection(roomDocRef, 'messages');
     await addDoc(messagesCollectionRef, messageData);
 
-    // 最後のN個の交換を取得（例では最後の5個）
-    const lastNMessages: MyCompletionMessage[] = messages
-      .slice(-5)
-      .map((message) => ({
-        role: message.sender === 'user' ? 'user' : 'assistant',
-        content: message.text,
-      }));
-
-    // 新しいユーザーの入力を追加
+    // 2) 過去メッセージ最後のN個を準備
+    const lastNMessages: MyCompletionMessage[] = messages.slice(-5).map((m) => ({
+      role: m.sender === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
     lastNMessages.push({ role: 'user', content: inputMessage });
 
-    // const prompt = inputMessage;
-
+    // 3) 入力欄・ローディング・パーシャル初期化
     setInputMessage('');
-
     setIsLoading(true);
+    setPartialBotResponse('');
 
-    const gpt3Response = await openai.chat.completions.create({
-      // messages: [{ role: "user", content: prompt }],
-      messages: lastNMessages,
+    // 4) OpenAI へストリーミングリクエスト
+    const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
+      messages: lastNMessages,
+      stream: true,  // ★ストリームON★
     });
+
+    // 5) chunkを受け取りながらpartialテキストを画面に表示
+    let finalText = '';
+    for await (const chunk of response) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      if (content) {
+        finalText += content;
+        setPartialBotResponse((prev) => prev + content);
+      }
+    }
 
     setIsLoading(false);
 
-    const botResponse = gpt3Response.choices[0].message.content;
-    // console.log(botResponse);
-
-    // ボットの返信を Firestore に保存
+    // 6) 最終的なbotレスポンスをFirestoreに保存
     await addDoc(messagesCollectionRef, {
-      text: botResponse,
+      text: finalText,
       sender: 'bot',
       createdAt: serverTimestamp(),
     });
@@ -130,6 +136,8 @@ const Chat = () => {
   return (
     <div className="bg-gray-900 h-full p-4 flex flex-col">
       <h1 className="text-white mb-2 text-lg">{selectedRoomName}</h1>
+
+      {/* メッセージ表示エリア */}
       <div className="flex-grow overflow-y-auto mb-4 space-y-4" ref={scrollDiv}>
         {messages.map((message, index) => (
           <div
@@ -147,8 +155,25 @@ const Chat = () => {
             </div>
           </div>
         ))}
-        {isLoading && <LoadingIcons.SpinningCircles />}
+
+        {/* ストリーミング中のパーシャル応答表示 */}
+        {isLoading && partialBotResponse && (
+          <div className="text-left">
+            <div className="bg-stone-700 inline-block rounded px-4 py-2 mb-2">
+              <p className="text-white">{partialBotResponse}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ローディングアイコン (最後までの受信が完了していない場合) */}
+        {isLoading && !partialBotResponse && (
+          <div className="text-center">
+            <LoadingIcons.SpinningCircles />
+          </div>
+        )}
       </div>
+
+      {/* 入力欄 & 送信ボタン */}
       <div className="flex-shrink-0 relative">
         <input
           type="text"
@@ -174,48 +199,5 @@ const Chat = () => {
     </div>
   );
 };
-//   return (
-//     <div className="bg-gray-900 h-full p-4 flex flex-col">
-//       {/* 部屋名などのタイトル */}
-//       <h1 className="text-white mb-2 text-xl">Room1</h1>
-
-//       {/* チャットログ部分 */}
-//       <div className="flex-grow overflow-y-auto mb-4 space-y-4">
-//         {messages.map((message, index) => (
-//           <div
-//             key={index}
-//             className={message.sender === 'user' ? 'text-right' : 'text-left'}
-//           >
-//             <div
-//               className={
-//                 message.sender === 'user'
-//                   ? 'relative max-w-sm bg-slate-700 px-4 py-2 rounded-lg'
-//                   : 'relative max-w-sm bg-stone-700 px-4 py-2 rounded-lg'
-//               }
-//             >
-//               <p className="text-white">{message.text}</p>
-//             </div>
-//           </div>
-//         ))}
-//       </div>
-
-//       {/* メッセージ入力行 */}
-//       <div className="flex-shrink-0 relative">
-//         <input
-//           type="text"
-//           placeholder="Send a Message"
-//           className="border-2 rounded w-full pr-10 focus:outline-none p-2"
-//           onChange={(e) => setInputMessage(e.target.value)}
-//         />
-//         <button
-//           className="absolute inset-y-0 right-5 flex items-center"
-//           onClick={() => sendMessage()}
-//         >
-//           <TbMessageChatbot />
-//         </button>
-//       </div>
-//     </div>
-//   );
-// };
 
 export default Chat;
