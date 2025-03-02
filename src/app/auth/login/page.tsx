@@ -1,10 +1,7 @@
 'use client'; //これをつけるとクライアントサイドレンダリングになる．なので別にReactでおｋだった．Next.js 13 以降（App Router）では、ファイルの先頭に use client を記述すると、そのファイルがサーバー コンポーネントではなくクライアント コンポーネントとして扱われる．page.tsx の先頭に書き足し
 
 import { auth } from '@/app/firebase';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-} from 'firebase/auth';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import React from 'react';
@@ -26,9 +23,8 @@ const Login = () => {
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
     await signInWithEmailAndPassword(auth, data.email, data.password)
-      .then((userCredential) => {
+      .then(() => {
         router.push('/');
-        // console.log(user);
       })
       .catch((error) => {
         if (error.code === 'auth/invalid-credential') {
@@ -105,7 +101,7 @@ const Login = () => {
         </div>
         <div className="mt-4">
           <span className="text-gray-600 text-sm">
-            初めてのご利用の方はこちら 
+            初めてのご利用の方はこちら
           </span>
           <Link
             href={'/auth/register'}

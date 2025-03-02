@@ -15,8 +15,8 @@ import { TbMessageChatbot } from 'react-icons/tb';
 import { db } from '../firebase';
 import { useAppContext } from '../context/AppContext';
 import OpenAI from 'openai';
-import LoadingIcons from 'react-loading-icons'
-import { useRouter } from 'next/navigation';
+import LoadingIcons from 'react-loading-icons';
+// import { useRouter } from 'next/navigation';
 
 type Message = {
   text: string;
@@ -35,13 +35,12 @@ const Chat = () => {
     dangerouslyAllowBrowser: true,
   });
 
-  const { user, userId, selectedRoom, setSelectedRoom } = useAppContext();
+  const { selectedRoom, selectedRoomName } = useAppContext();
 
-  const router = useRouter();
+  // const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [roomName, setRoomName] = useState<string>('');
 
   const scrollDiv = useRef<HTMLDivElement>(null);
 
@@ -67,7 +66,17 @@ const Chat = () => {
 
       fetchMessages();
     }
-  }, [selectedRoom]);
+  }, [selectedRoom, messages]);
+
+  useEffect(() => {
+    if (scrollDiv.current) {
+      const element = scrollDiv.current;
+      element.scrollTo({
+        top: element.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages]);
 
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
@@ -78,7 +87,6 @@ const Chat = () => {
       createdAt: serverTimestamp(),
     };
 
-    // メッセージを Firestore に保存
     const roomDocRef = doc(db, 'rooms', selectedRoom!);
     const messagesCollectionRef = collection(roomDocRef, 'messages');
     await addDoc(messagesCollectionRef, messageData);
@@ -87,15 +95,15 @@ const Chat = () => {
     const lastNMessages: MyCompletionMessage[] = messages
       .slice(-5)
       .map((message) => ({
-        role: message.sender === 'user' ? 'user' : 'assistant', // この行を修正
+        role: message.sender === 'user' ? 'user' : 'assistant',
         content: message.text,
       }));
 
     // 新しいユーザーの入力を追加
     lastNMessages.push({ role: 'user', content: inputMessage });
 
-    const prompt = inputMessage; // ここを自分の需要に合わせて調整
-    // 入力フィールドをクリア
+    // const prompt = inputMessage;
+
     setInputMessage('');
 
     setIsLoading(true);
@@ -120,9 +128,8 @@ const Chat = () => {
   };
 
   return (
-
     <div className="bg-gray-900 h-full p-4 flex flex-col">
-      <h1 className="text-white mb-2 text-lg">{roomName}</h1>
+      <h1 className="text-white mb-2 text-lg">{selectedRoomName}</h1>
       <div className="flex-grow overflow-y-auto mb-4 space-y-4" ref={scrollDiv}>
         {messages.map((message, index) => (
           <div
@@ -140,8 +147,7 @@ const Chat = () => {
             </div>
           </div>
         ))}
-        {isLoading &&
-      <LoadingIcons.SpinningCircles />}
+        {isLoading && <LoadingIcons.SpinningCircles />}
       </div>
       <div className="flex-shrink-0 relative">
         <input

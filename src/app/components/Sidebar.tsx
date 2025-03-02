@@ -14,7 +14,6 @@ import {
   where,
 } from 'firebase/firestore';
 import { useAppContext } from '../context/AppContext';
-import { CgSelectR } from 'react-icons/cg';
 
 type Room = {
   id: string;
@@ -23,7 +22,8 @@ type Room = {
 };
 
 const Sidebar = () => {
-  const { user, userId, setSelectedRoom } = useAppContext();
+  const { user, userId, setSelectedRoom, setSelectedRoomName } =
+    useAppContext();
   // console.log(userId);
   const [rooms, setRooms] = useState<Room[]>([]);
 
@@ -37,22 +37,26 @@ const Sidebar = () => {
           // where('userid', '==', 'hoge'),
           orderBy('createdAt')
         );
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        onSnapshot(q, (snapshot) => {
           const newRooms: Room[] = snapshot.docs.map((doc) => ({
             id: doc.id,
             name: doc.data().name,
             createdAt: doc.data().createdAt,
           }));
+          // return () => {
+          // };
+
           setRooms(newRooms);
           // console.log(newRooms);
         });
       };
       fetchRooms();
     }
-  }, [userId]); // 依存関係にuserIdを含めると読み込みなおしたときも取得可能になる
+  }, [user, userId]); // 依存関係にuserIdを含めると読み込みなおしたときも取得可能になる
 
-  const selectRoom = (roomId: string) => {
+  const selectRoom = (roomId: string, roomName: string) => {
     setSelectedRoom(roomId);
+    setSelectedRoomName(roomName);
     // console.log(roomId);
   };
 
@@ -87,28 +91,22 @@ const Sidebar = () => {
             <li
               key={room.id}
               className="cursor-pointer border-b p-4 text-slate-100 hover:bg-stone-700 duration-150"
-              onClick={() => selectRoom(room.id)}
+              onClick={() => selectRoom(room.id, room.name)}
             >
               {room.name}
             </li>
           ))}
-          {/* <li className="cursor-pointer border-b p-4 text-slate-100 hover:bg-stone-700 duration-150">
-            Room1
-          </li>
-          <li className="cursor-pointer border-b p-4 text-slate-100 hover:bg-stone-700 duration-150">
-            Room2
-          </li>
-          <li className="cursor-pointer border-b p-4 text-slate-100 hover:bg-stone-700 duration-150">
-            Room3
-          </li>
-          <li className="cursor-pointer border-b p-4 text-slate-100 hover:bg-stone-700 duration-150">
-            Room
-          </li> */}
         </ul>
       </div>
 
+      {user && (
+        <div className="mb-2 p-4 text-slate-100 text-lg font-medium">
+          {user.email}
+        </div>
+      )}
+
       <div
-        onClick={handleLogout}
+        onClick={() => handleLogout()}
         className="mb-2 cursor-pointer p-4 text-slate-100 hover:bg-stone-700 duration-150 flex items-center justify-evenly"
       >
         <RiLogoutBoxLine />
