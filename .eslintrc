@@ -1,0 +1,9 @@
+{
+  "rules": {
+    // JavaScript文字列をシングルクオートへ
+    "quotes": ["error", "single", { "avoidEscape": true }],
+
+    // JSX 属性値をダブルクオートへ
+    "jsx-quotes": ["error", "prefer-double"]
+  }
+}
