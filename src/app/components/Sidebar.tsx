@@ -2,13 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { RiLogoutBoxLine } from 'react-icons/ri';
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import {
   Timestamp,
+  addDoc,
   collection,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   where,
 } from 'firebase/firestore';
 import { useAppContext } from '../context/AppContext';
@@ -56,7 +58,20 @@ const Sidebar = () => {
 
   const addNewRoom = async () => {
     const roomName = prompt('ルーム名を入力してください');
+    if (roomName) {
+      const newRoomRef = collection(db, 'rooms');
+      await addDoc(newRoomRef, {
+        name: roomName,
+        userid: userId,
+        createdAt: serverTimestamp(),
+      });
+    }
   };
+
+  const handleLogout = () => {
+    auth.signOut();
+  };
+
   return (
     <div className="bg-custom-black h-full overflow-y-auto px-5 flex flex-col">
       <div className="flex-grow">
@@ -92,7 +107,10 @@ const Sidebar = () => {
         </ul>
       </div>
 
-      <div className="mb-2 cursor-pointer p-4 text-slate-100 hover:bg-stone-700 duration-150 flex items-center justify-evenly">
+      <div
+        onClick={handleLogout}
+        className="mb-2 cursor-pointer p-4 text-slate-100 hover:bg-stone-700 duration-150 flex items-center justify-evenly"
+      >
         <RiLogoutBoxLine />
         <span>ログアウト</span>
       </div>
