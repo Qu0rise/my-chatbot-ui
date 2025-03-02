@@ -14,6 +14,7 @@ import React, { useEffect, useState } from 'react';
 import { TbMessageChatbot } from 'react-icons/tb';
 import { db } from '../firebase';
 import { useAppContext } from '../context/AppContext';
+import OpenAI from 'openai';
 
 type Message = {
   text: string;
@@ -22,6 +23,11 @@ type Message = {
 };
 
 const Chat = () => {
+  const openai = new OpenAI({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_KEY,
+    dangerouslyAllowBrowser: true,
+  });
+
   const { selectedRoom } = useAppContext();
   const [inputMessage, setInputMessage] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -60,9 +66,18 @@ const Chat = () => {
     };
 
     //messageをfirestoreに保存
-    const roomDocRef = doc(db, 'rooms', 'cgW6YsMwsTKoln49rEHH');
+    const roomDocRef = doc(db, 'rooms', 'selectedRoom');
     const messageCollectionRef = collection(roomDocRef, 'messages');
     await addDoc(messageCollectionRef, messageData);
+
+    //OpenAIからの返信
+
+    const gpt3Response = await openai.chat.completions.create({
+      // messages: [{ role: "user", content: prompt }],
+      messages: [{ role: 'user', content: inputMessage }],
+      model: 'gpt-3.5-turbo',
+    });
+    console.log(gpt3Response);
   };
   return (
     <div className="bg-gray-900 h-full p-4 flex flex-col">
@@ -72,41 +87,20 @@ const Chat = () => {
       {/* チャットログ部分 */}
       <div className="flex-grow overflow-y-auto mb-4 space-y-4">
         {messages.map((message, index) => (
-          <>
+          <div
+            key={index}
+            className={message.sender === 'user' ? 'text-right' : 'text-left'}
+          >
             <div
-              key={index}
-              className={message.sender === 'user' ? 'text-right' : 'text-left'}
+              className={
+                message.sender === 'user'
+                  ? 'relative max-w-sm bg-slate-700 px-4 py-2 rounded-lg'
+                  : 'relative max-w-sm bg-stone-700 px-4 py-2 rounded-lg'
+              }
             >
-              <div
-                className={
-                  message.sender === 'user'
-                    ? 'relative max-w-sm bg-slate-700 text-white px-4 py-2 rounded-lg'
-                    : 'relative max-w-sm bg-stone-700 text-white px-4 py-2 rounded-lg'
-                }
-              >
-                <p>{message.text}</p>
-              </div>
+              <p className="text-white">{message.text}</p>
             </div>
-            {/* 右寄せの吹き出し 1
-            <div className="flex justify-end">
-              <div className="relative max-w-sm bg-slate-700 text-white px-4 py-2 rounded-lg">
-                <p>{message.text}</p>
-              </div>
-            </div>
-            {/* hidar左寄せの吹き出し 1 */}
-            <div className="flex justify-start">
-              <div className="relative max-w-sm bg-stone-700 text-white px-4 py-2 rounded-lg">
-                <p>{message.text}</p>
-              </div>
-            </div>
-            {/* 右寄せの吹き出し 2（複数行） */}
-            <div className="flex justify-end">
-              <div className="relative max-w-sm bg-slate-700 text-white px-4 py-2 rounded-lg">
-                <p>{message.text}</p>
-              </div>
-            </div>{' '}
-            */
-          </>
+          </div>
         ))}
       </div>
 
